@@ -64,6 +64,7 @@ async def on_message(message):
         if is_valid_yt_url(url):
             new_song = get_song_info(url)
             playlist.append(new_song)
+            await client.send_message(message.channel, 'Nouvelle entrée : '+new_song.title)
         else:
             await client.send_message(message.channel, 'Ceci n\'est pas un lien valide...')
     elif message.content.startswith('!playlist'):
