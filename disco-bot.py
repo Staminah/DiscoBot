@@ -2,8 +2,22 @@ import discord
 import asyncio
 import collections
 import re
-import youtube_dl
 import copy
+
+try:
+    import youtube_dl
+except:
+    youtube_dl = None
+
+try:
+    if not discord.opus.is_loaded():
+        discord.opus.load_opus('libopus-0.dll')
+except OSError:  # Incorrect bitness
+    opus = False
+except:  # Missing opus
+    opus = None
+else:
+    opus = True
 
 # -----------------
 #    CONSTANTES
@@ -96,6 +110,14 @@ async def on_message(message):
 async def play(message):
     """Plays songs."""
     global current_song
+
+    server = message.server
+    author = message.author
+    voice_channel = author.voice_channel
+    #Envoie du bot dans le channel de author
+    voice = await _join_voice_channel(voice_channel)
+
+
     if current_song is None:
         if playlist:
             while playlist:
@@ -105,6 +127,9 @@ async def play(message):
                 song_duration = current_song.duration
 
                 # TODO: Lancer la musique
+                player = await voice.create_ytdl_player(song_url, ytdl_options=YT_DL_OPTIONS)
+                player.start()
+				
                 await client.send_message(message.channel, f":musical_note: Ecoute : {song_title}")
                 await peek(message);
                 await asyncio.sleep(song_duration) # en secondes
@@ -135,10 +160,15 @@ def is_valid_yt_url(url):
     if yt_link.match(url):
         return True
     return False
+	
+async def _join_voice_channel(channel):
+	voice = await client.join_voice_channel(channel)
+	print("Connected")
+	return voice
 
 def seconds_to_hms(seconds):
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return(h, m, s)
 
-client.run('MzEyMTQ3MjIyO...7XHUolMbjzL1h3o')
+client.run('token')
