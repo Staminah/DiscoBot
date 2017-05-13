@@ -68,6 +68,7 @@ client = discord.Client()
 player = None;
 stop_demand = False
 voice = None
+volume = 1.0;
 
 # -----------------
 #    DISCORD.PY
@@ -106,6 +107,8 @@ async def on_message(message):
         await play(message)
     elif message.content.startswith('!peek'):
         await peek(message.channel);
+    elif message.content.startswith('!song'):
+        await display_song_playing_info(message.channel)  
     elif message.content.startswith('!pause'):
         player.pause();   
         await client.send_message(message.channel, ":pause_button: Lecture mise en pause. (Reprendre la lecture avec !resume)")
@@ -124,7 +127,14 @@ async def on_message(message):
     elif message.content.startswith('!dellast'):
         del_song = playlist.popleft()
         song_title = del_song.title
-        await client.send_message(message.channel, ":grey_exclamation: " + song_title + " [Retiré de la playlist]" )   
+        await client.send_message(message.channel, ":grey_exclamation: " + song_title + " [Retiré de la playlist]" )
+    elif message.content.startswith('!volume'):
+        arg = message.content.split()
+        if(len(arg) > 1):
+            await set_volume(arg[1], message.channel)
+        else:
+            await display_volume(message.channel)
+            
 # -----------------
 #     METHODES
 # -----------------
@@ -160,6 +170,8 @@ async def play(message):
                 current_song = playlist.pop()
 
                 player = await voice.create_ytdl_player(current_song.url, ytdl_options=YT_DL_OPTIONS)
+                print(volume)
+                player.volume = volume
                 player.start()
 				
                 await display_song_playing_info(message.channel)
@@ -217,6 +229,23 @@ async def _join_voice_channel(channel):
     voice = await client.join_voice_channel(channel)
     print("Connection to a voice channel")
     return voice
+
+async def display_volume(channel):
+    await client.send_message(channel, ":sound: Volume à " + str(volume*100.) + "%" )
+ 
+async def set_volume(val, channel):
+    """Set the new volume to val"""
+    global volume
+    try:
+        val = int(val)
+    except ValueError:
+        print("That's not an int!")
+    if 0 <= val <=200:
+        volume = val/100.
+        player.volume = volume
+        await display_volume(channel)
+    else:
+        await client.send_message(channel, ":exclamation: Le volume doit être compris entre 0 et 200." )
 
 def seconds_to_hms(seconds):
     """Convert given seconds into hms"""
