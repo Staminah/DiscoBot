@@ -66,7 +66,8 @@ playlist = Deque()
 current_song = None
 client = discord.Client()
 player = None;
-stop_demand = False;
+stop_demand = False
+voice = None
 
 # -----------------
 #    DISCORD.PY
@@ -85,8 +86,7 @@ async def on_message(message):
         if is_valid_yt_url(url):
             new_song = get_song_info(url)
             playlist.appendleft(new_song)
-            hms = seconds_to_hms(new_song.duration)
-            await client.send_message(message.channel, ':notes: Nouvelle entrée : '+ new_song.title + '. Durée : ' + str(hms[0]) + ':' + str(hms[1]) + ':' + str(hms[2]))
+            await client.send_message(message.channel, ':notes: Nouvelle entrée : '+ new_song.title + '. :clock10: ' + hms_to_string(seconds_to_hms(new_song.duration)))
         else:
             await client.send_message(message.channel, ':exclamation: Ceci n\'est pas un lien valide...')
     elif message.content.startswith('!playlist'):
@@ -98,7 +98,8 @@ async def on_message(message):
             song_duration = song.duration
             song_url = song.url
             count += 1
-            await client.send_message(message.channel, f"{count}. {song_title} - {song_duration} secondes")
+            hms = hms_to_string(seconds_to_hms(song.duration))
+            await client.send_message(message.channel, f"{count}. {song_title} - {hms}")
         if count == 0:
             await client.send_message(message.channel, ":exclamation: La playlist est vide")
     elif message.content.startswith('!play'):
@@ -117,6 +118,13 @@ async def on_message(message):
     elif message.content.startswith('!stop'):
         stop() #Stop the player completly
         await client.send_message(message.channel, ":stop_button: Lecture stoppée. (Reprendre la lecture avec !play)")
+    elif message.content.startswith('!clear'):
+        playlist.clear()
+        await client.send_message(message.channel, ":grey_exclamation: La playlist a été vidée.")
+    elif message.content.startswith('!dellast'):
+        del_song = playlist.popleft()
+        song_title = del_song.title
+        await client.send_message(message.channel, ":grey_exclamation: " + song_title + " [Retiré de la playlist]" )   
 # -----------------
 #     METHODES
 # -----------------
@@ -124,6 +132,7 @@ def stop():
     """Stop completly the music"""
     global stop_demand
     stop_demand = True
+    playlist.append(current_song) #Put back on top of the playlist the song playing when stopped
     player.stop();
 
 async def play(message):
@@ -131,23 +140,26 @@ async def play(message):
     global current_song
     global player
     global stop_demand
+    global voice
 
     server = message.server
     author = message.author
-    #TODO : Vérifier qu'on soit pas deja dans un channel
     voice_channel = author.voice_channel
     #Envoie du bot dans le channel de author
-    voice = await _join_voice_channel(voice_channel)
+    tmp_voice = await _join_voice_channel(voice_channel)
+    
+    #If the bot is not already in the given voice channel
+    if tmp_voice != False:
+        voice = tmp_voice
 
     if current_song is None:
         if playlist:
             await client.send_message(message.channel, ':arrow_forward: Début de la lecture') 
             while playlist and not stop_demand:
+                print("Lis un morceau")
                 current_song = playlist.pop()
-                song_url = current_song.url
 
-                # TODO: Lancer la musique
-                player = await voice.create_ytdl_player(song_url, ytdl_options=YT_DL_OPTIONS)
+                player = await voice.create_ytdl_player(current_song.url, ytdl_options=YT_DL_OPTIONS)
                 player.start()
 				
                 await display_song_playing_info(message.channel)
@@ -155,9 +167,10 @@ async def play(message):
                 while not player.is_done():
                     await asyncio.sleep(1) # attend tant que la musique en cours n'est pas finie 
 
-            stop = False
+            if not stop_demand:
+                await client.send_message(message.channel, ':white_check_mark: La playlist est terminée')
+            stop_demand = False
             current_song = None
-            await client.send_message(message.channel, ':white_check_mark: La playlist est terminée')
         else:
             await client.send_message(message.channel, ':exclamation: La playlist est vide')
     else:
@@ -175,7 +188,8 @@ async def peek(channel):
 async def display_song_playing_info(channel):
     """Display info from the song playing currently and the next song to come"""
     song_title = current_song.title
-    await client.send_message(channel, f":musical_note: Ecoute : {song_title}")
+    hms = hms_to_string(seconds_to_hms(current_song.duration))
+    await client.send_message(channel, f":musical_note: Ecoute : {song_title} - {hms}")
     await peek(channel);
         
 def get_song_info(url):
@@ -193,14 +207,36 @@ def is_valid_yt_url(url):
 	
 async def _join_voice_channel(channel):
     """The Bot join the given audio channel"""
-	voice = await client.join_voice_channel(channel)
-	print("Connected")
-	return voice
+    #Pour l'instant on admet un usage sur un seul voice channel à la fois
+    
+    for voice in client.voice_clients:      
+        if voice.channel.id == channel.id:
+            print("Already in that voice channel")
+            return False
+    
+    voice = await client.join_voice_channel(channel)
+    print("Connection to a voice channel")
+    return voice
 
 def seconds_to_hms(seconds):
     """Convert given seconds into hms"""
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return(h, m, s)
+    
+def hms_to_string(hms):
+    """Convert hms into a string"""
+    h = ""
+    m = ""
+    s = ""
+    if hms[0] != 0:
+        h = str(hms[0]) + "h "
+    if hms[1] != 0:
+        m = str(hms[1]) + "mn "
+    if hms[2] != 0:
+        s = str(hms[2]) + "s"
+        
+    return h + m + s
+
 
 client.run('token')
