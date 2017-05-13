@@ -65,6 +65,8 @@ class Deque(collections.deque):
 playlist = Deque()
 current_song = None
 client = discord.Client()
+player = None;
+stop_demand = False;
 
 # -----------------
 #    DISCORD.PY
@@ -102,37 +104,58 @@ async def on_message(message):
     elif message.content.startswith('!play'):
         await play(message)
     elif message.content.startswith('!peek'):
-        await peek(message);
-
+        await peek(message.channel);
+    elif message.content.startswith('!pause'):
+        player.pause();   
+        await client.send_message(message.channel, ":pause_button: Lecture mise en pause. (Reprendre la lecture avec !resume)")
+    elif message.content.startswith('!resume'):
+        player.resume(); 
+        await client.send_message(message.channel, ":arrow_forward: Reprise de la lecture")
+    elif message.content.startswith('!next'):
+        player.stop(); #Stop the current song
+        await client.send_message(message.channel, ":track_next: Passage au morceau suivant")
+    elif message.content.startswith('!stop'):
+        stop() #Stop the player completly
+        await client.send_message(message.channel, ":stop_button: Lecture stoppée. (Reprendre la lecture avec !play)")
 # -----------------
 #     METHODES
 # -----------------
+def stop():
+    """Stop completly the music"""
+    global stop_demand
+    stop_demand = True
+    player.stop();
+
 async def play(message):
     """Plays songs."""
     global current_song
+    global player
+    global stop_demand
 
     server = message.server
     author = message.author
+    #TODO : Vérifier qu'on soit pas deja dans un channel
     voice_channel = author.voice_channel
     #Envoie du bot dans le channel de author
     voice = await _join_voice_channel(voice_channel)
 
-
     if current_song is None:
         if playlist:
-            while playlist:
+            await client.send_message(message.channel, ':arrow_forward: Début de la lecture') 
+            while playlist and not stop_demand:
                 current_song = playlist.pop()
-                song_title = current_song.title
                 song_url = current_song.url
-                song_duration = current_song.duration
 
                 # TODO: Lancer la musique
                 player = await voice.create_ytdl_player(song_url, ytdl_options=YT_DL_OPTIONS)
                 player.start()
 				
-                await client.send_message(message.channel, f":musical_note: Ecoute : {song_title}")
-                await peek(message);
-                await asyncio.sleep(song_duration) # en secondes
+                await display_song_playing_info(message.channel)
+                
+                while not player.is_done():
+                    await asyncio.sleep(1) # attend tant que la musique en cours n'est pas finie 
+
+            stop = False
             current_song = None
             await client.send_message(message.channel, ':white_check_mark: La playlist est terminée')
         else:
@@ -140,14 +163,21 @@ async def play(message):
     else:
         await client.send_message(message.channel, ':exclamation: Musique déjà en cours')
 
-async def peek(message):
+async def peek(channel):
+    """Display information of the next song to come"""
     peeked_song = playlist.peek()
     if peeked_song:
         song_title = peeked_song.title
-        await client.send_message(message.channel, f":track_next: Prochain morceau : {song_title}")
+        await client.send_message(channel, f":track_next: Prochain morceau : {song_title}")
     else:
-        await client.send_message(message.channel, ":track_next: Prochain morceau : Y'a plus rien après wesh")
+        await client.send_message(channel, ":track_next: Prochain morceau : Y'a plus rien après wesh")
 
+async def display_song_playing_info(channel):
+    """Display info from the song playing currently and the next song to come"""
+    song_title = current_song.title
+    await client.send_message(channel, f":musical_note: Ecoute : {song_title}")
+    await peek(channel);
+        
 def get_song_info(url):
     """Returns Song object with details from url video."""
     yt = youtube_dl.YoutubeDL(YT_DL_OPTIONS)
@@ -162,11 +192,13 @@ def is_valid_yt_url(url):
     return False
 	
 async def _join_voice_channel(channel):
+    """The Bot join the given audio channel"""
 	voice = await client.join_voice_channel(channel)
 	print("Connected")
 	return voice
 
 def seconds_to_hms(seconds):
+    """Convert given seconds into hms"""
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return(h, m, s)
