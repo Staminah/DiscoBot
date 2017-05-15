@@ -140,3 +140,6 @@ $RECYCLE.BIN/
 
 # Token
 token.txt
+
+#Executable
+*.exe
