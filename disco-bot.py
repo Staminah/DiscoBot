@@ -47,6 +47,11 @@ class Song:
         self.id = kwargs.pop('id', None)
         self.url = kwargs.pop('webpage_url', None)
         self.duration = kwargs.pop('duration', 60)
+        
+    def is_too_long():
+        if self.duration > 420:
+            return true
+        return false
 
 class Deque(collections.deque):
     def __init__(self, *args, **kwargs):
@@ -87,7 +92,9 @@ async def on_message(message):
         if is_valid_yt_url(url):
             new_song = get_song_info(url)
             playlist.appendleft(new_song)
-            await client.send_message(message.channel, ':notes: Nouvelle entrée : '+ new_song.title + '. :clock10: ' + hms_to_string(seconds_to_hms(new_song.duration)))
+            title = new_song.title
+            hms = hms_to_string(seconds_to_hms(new_song.duration))
+            await client.send_message(message.channel, f":notes: Nouvelle entrée : {title}. :clock10: {hms}")
         else:
             await client.send_message(message.channel, ':exclamation: Ceci n\'est pas un lien valide...')
     elif message.content.startswith('!playlist'):
@@ -127,7 +134,7 @@ async def on_message(message):
     elif message.content.startswith('!dellast'):
         del_song = playlist.popleft()
         song_title = del_song.title
-        await client.send_message(message.channel, ":grey_exclamation: " + song_title + " [Retiré de la playlist]" )
+        await client.send_message(message.channel, f":grey_exclamation: {song_title} [Retiré de la playlist]" )
     elif message.content.startswith('!volume'):
         arg = message.content.split()
         if(len(arg) > 1):
@@ -213,9 +220,7 @@ def get_song_info(url):
 def is_valid_yt_url(url):
     """Verify if url is a valid YouTube link."""
     yt_link = re.compile(r'^(https?\:\/\/)?(www\.|m\.)?(youtube\.com|youtu\.?be)\/.+$') # C'est pas nous qui l'avons fait...
-    if yt_link.match(url):
-        return True
-    return False
+    return yt_link.match(url)
 	
 async def _join_voice_channel(channel):
     """The Bot join the given audio channel"""
@@ -231,7 +236,8 @@ async def _join_voice_channel(channel):
     return voice
 
 async def display_volume(channel):
-    await client.send_message(channel, ":sound: Volume à " + str(volume*100.) + "%" )
+    display_volume = volume*100.
+    await client.send_message(channel, f":sound: Volume à {display_volume}%" )
  
 async def set_volume(val, channel):
     """Set the new volume to val"""
@@ -242,7 +248,8 @@ async def set_volume(val, channel):
         print("That's not an int!")
     if 0 <= val <=200:
         volume = val/100.
-        player.volume = volume
+        if player != None:
+            player.volume = volume
         await display_volume(channel)
     else:
         await client.send_message(channel, ":exclamation: Le volume doit être compris entre 0 et 200." )
