@@ -47,11 +47,6 @@ class Song:
         self.id = kwargs.pop('id', None)
         self.url = kwargs.pop('webpage_url', None)
         self.duration = kwargs.pop('duration', 60)
-        
-    def is_too_long():
-        if self.duration > 420:
-            return true
-        return false
 
 class Deque(collections.deque):
     def __init__(self, *args, **kwargs):
@@ -90,11 +85,16 @@ async def on_message(message):
     if message.content.startswith('!add song'):
         url = message.content.split()[2]
         if is_valid_yt_url(url):
-            new_song = get_song_info(url)
-            playlist.appendleft(new_song)
-            title = new_song.title
-            hms = hms_to_string(seconds_to_hms(new_song.duration))
-            await client.send_message(message.channel, f":notes: Nouvelle entrée : {title}. :clock10: {hms}")
+            info = get_song_info(url)
+            print(info['duration'])
+            if check_duration(info['duration']):
+                new_song = Song(**info)
+                playlist.appendleft(new_song)
+                title = new_song.title
+                hms = hms_to_string(seconds_to_hms(new_song.duration))
+                await client.send_message(message.channel, f":notes: Nouvelle entrée : {title}. :clock10: {hms}")
+            else:
+                await client.send_message(message.channel, ":exclamation: La durée d'un morceau ne doit pas excéder 7 minutes")
         else:
             await client.send_message(message.channel, ':exclamation: Ceci n\'est pas un lien valide...')
     elif message.content.startswith('!playlist'):
@@ -109,11 +109,15 @@ async def on_message(message):
             hms = hms_to_string(seconds_to_hms(song.duration))
             await client.send_message(message.channel, f"{count}. {song_title} - {hms}")
         if count == 0:
-            await client.send_message(message.channel, ":exclamation: La playlist est vide")
+            await display_error_empty_playlist(message.channel)
     elif message.content.startswith('!play'):
         await play(message)
     elif message.content.startswith('!peek'):
-        await peek(message.channel);
+        if playlist:
+            await peek(message.channel);
+        else:
+            await display_error_empty_playlist(message.channel)
+        
     elif message.content.startswith('!song'):
         await display_song_playing_info(message.channel)  
     elif message.content.startswith('!pause'):
@@ -123,8 +127,11 @@ async def on_message(message):
         player.resume(); 
         await client.send_message(message.channel, ":arrow_forward: Reprise de la lecture")
     elif message.content.startswith('!next'):
-        player.stop(); #Stop the current song
-        await client.send_message(message.channel, ":track_next: Passage au morceau suivant")
+        if current_song:
+            player.stop(); #Stop the current song
+            await client.send_message(message.channel, ":track_next: Passage au morceau suivant")
+        else:
+            await display_error_not_playing(message.channel)
     elif message.content.startswith('!stop'):
         stop() #Stop the player completly
         await client.send_message(message.channel, ":stop_button: Lecture stoppée. (Reprendre la lecture avec !play)")
@@ -191,7 +198,7 @@ async def play(message):
             stop_demand = False
             current_song = None
         else:
-            await client.send_message(message.channel, ':exclamation: La playlist est vide')
+            await display_error_empty_playlist(message.channel)
     else:
         await client.send_message(message.channel, ':exclamation: Musique déjà en cours')
 
@@ -215,7 +222,7 @@ def get_song_info(url):
     """Returns Song object with details from url video."""
     yt = youtube_dl.YoutubeDL(YT_DL_OPTIONS)
     video = yt.extract_info(url, download=False, process=False)
-    return Song(**video)
+    return video
 
 def is_valid_yt_url(url):
     """Verify if url is a valid YouTube link."""
@@ -236,8 +243,7 @@ async def _join_voice_channel(channel):
     return voice
 
 async def display_volume(channel):
-    display_volume = volume*100.
-    await client.send_message(channel, f":sound: Volume à {display_volume}%" )
+    await client.send_message(channel, f"Volume à {volume * 100:.0f}%" )
  
 async def set_volume(val, channel):
     """Set the new volume to val"""
@@ -248,7 +254,7 @@ async def set_volume(val, channel):
         print("That's not an int!")
     if 0 <= val <=200:
         volume = val/100.
-        if player != None:
+        if player:
             player.volume = volume
         await display_volume(channel)
     else:
@@ -273,6 +279,14 @@ def hms_to_string(hms):
         s = str(hms[2]) + "s"
         
     return h + m + s
+    
+def check_duration(duration):
+    return duration <= 420 # 7 minutes
 
+async def display_error_empty_playlist(channel):
+    await client.send_message(channel, ":exclamation: La playlist est vide")
+    
+async def display_error_not_playing(channel):
+    await client.send_message(channel, ":exclamation: Pas de lecture en cours")
 
 client.run('token')
