@@ -12,8 +12,8 @@ $ pip install -r requirements.txt
 
 ### Installing
 
-1. Add ffmpeg.exe to your PATH
-2. Replace "token" by your bot token in disco-bot.py (at the very bottom)
+1. Add **ffmpeg.exe** to your PATH
+2. Replace "token" by your bot token in **disco-bot.py** (at the very bottom)
 
 ```
 client.run('your_token_here')
