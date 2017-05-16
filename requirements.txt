@@ -1,0 +1,5 @@
+#Discord
+discord.py
+
+#Youtube
+youtube_dl
