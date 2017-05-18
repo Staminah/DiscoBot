@@ -28,7 +28,8 @@ YT_DL_OPTIONS = {
     'extractaudio': True,
     'audioformat': "mp3",
     'outtmpl': '%(id)s',
-    'noplaylist': True,
+    'noplaylist': False,
+    'yesplaylist': True,
     'nocheckcertificate': True,
     'ignoreerrors': True,
     'quiet': True,
@@ -85,8 +86,11 @@ async def on_message(message):
     if message.content.startswith('!add song'):
         url = message.content.split()[2]
         if is_valid_yt_url(url):
+            
             info = get_song_info(url)
-            print(info['duration'])
+            #print(info)
+            
+            #print(info['duration'])
             if check_duration(info['duration']):
                 new_song = Song(**info)
                 playlist.appendleft(new_song)
@@ -183,7 +187,8 @@ async def play(message):
                 print("Lis un morceau")
                 current_song = playlist.pop()
 
-                player = await voice.create_ytdl_player(current_song.url, ytdl_options=YT_DL_OPTIONS)
+                beforeArgs = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                player = await voice.create_ytdl_player(current_song.url, ytdl_options=YT_DL_OPTIONS, before_options=beforeArgs)
                 print(volume)
                 player.volume = volume
                 player.start()
@@ -281,7 +286,7 @@ def hms_to_string(hms):
     return h + m + s
     
 def check_duration(duration):
-    return duration <= 420 # 7 minutes
+    return duration <= 480 # 8 minutes
 
 async def display_error_empty_playlist(channel):
     await client.send_message(channel, ":exclamation: La playlist est vide")
