@@ -86,10 +86,10 @@ async def on_message(message):
     if message.content.startswith('!add song'):
         url = message.content.split()[2]
         if is_valid_yt_url(url):
-            
+
             info = get_song_info(url)
             #print(info)
-            
+
             #print(info['duration'])
             if check_duration(info['duration']):
                 new_song = Song(**info)
@@ -121,14 +121,14 @@ async def on_message(message):
             await peek(message.channel);
         else:
             await display_error_empty_playlist(message.channel)
-        
+
     elif message.content.startswith('!song'):
-        await display_song_playing_info(message.channel)  
+        await display_song_playing_info(message.channel)
     elif message.content.startswith('!pause'):
-        player.pause();   
+        player.pause();
         await client.send_message(message.channel, ":pause_button: Lecture mise en pause. (Reprendre la lecture avec !resume)")
     elif message.content.startswith('!resume'):
-        player.resume(); 
+        player.resume();
         await client.send_message(message.channel, ":arrow_forward: Reprise de la lecture")
     elif message.content.startswith('!next'):
         if current_song:
@@ -152,7 +152,7 @@ async def on_message(message):
             await set_volume(arg[1], message.channel)
         else:
             await display_volume(message.channel)
-            
+
 # -----------------
 #     METHODES
 # -----------------
@@ -175,14 +175,14 @@ async def play(message):
     voice_channel = author.voice_channel
     #Envoie du bot dans le channel de author
     tmp_voice = await _join_voice_channel(voice_channel)
-    
+
     #If the bot is not already in the given voice channel
     if tmp_voice != False:
         voice = tmp_voice
 
     if current_song is None:
         if playlist:
-            await client.send_message(message.channel, ':arrow_forward: Début de la lecture') 
+            await client.send_message(message.channel, ':arrow_forward: Début de la lecture')
             while playlist and not stop_demand:
                 print("Lis un morceau")
                 current_song = playlist.pop()
@@ -192,11 +192,11 @@ async def play(message):
                 print(volume)
                 player.volume = volume
                 player.start()
-				
+
                 await display_song_playing_info(message.channel)
-                
+
                 while not player.is_done():
-                    await asyncio.sleep(1) # attend tant que la musique en cours n'est pas finie 
+                    await asyncio.sleep(1) # attend tant que la musique en cours n'est pas finie
 
             if not stop_demand:
                 await client.send_message(message.channel, ':white_check_mark: La playlist est terminée')
@@ -222,7 +222,7 @@ async def display_song_playing_info(channel):
     hms = hms_to_string(seconds_to_hms(current_song.duration))
     await client.send_message(channel, f":musical_note: Ecoute : {song_title} - {hms}")
     await peek(channel);
-        
+
 def get_song_info(url):
     """Returns Song object with details from url video."""
     yt = youtube_dl.YoutubeDL(YT_DL_OPTIONS)
@@ -233,23 +233,23 @@ def is_valid_yt_url(url):
     """Verify if url is a valid YouTube link."""
     yt_link = re.compile(r'^(https?\:\/\/)?(www\.|m\.)?(youtube\.com|youtu\.?be)\/.+$') # C'est pas nous qui l'avons fait...
     return yt_link.match(url)
-	
+
 async def _join_voice_channel(channel):
     """The Bot join the given audio channel"""
     #Pour l'instant on admet un usage sur un seul voice channel à la fois
-    
-    for voice in client.voice_clients:      
+
+    for voice in client.voice_clients:
         if voice.channel.id == channel.id:
             print("Already in that voice channel")
             return False
-    
+
     voice = await client.join_voice_channel(channel)
     print("Connection to a voice channel")
     return voice
 
 async def display_volume(channel):
     await client.send_message(channel, f"Volume à {volume * 100:.0f}%" )
- 
+
 async def set_volume(val, channel):
     """Set the new volume to val"""
     global volume
@@ -270,7 +270,7 @@ def seconds_to_hms(seconds):
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     return(h, m, s)
-    
+
 def hms_to_string(hms):
     """Convert hms into a string"""
     h = ""
@@ -282,16 +282,20 @@ def hms_to_string(hms):
         m = str(hms[1]) + "mn "
     if hms[2] != 0:
         s = str(hms[2]) + "s"
-        
+
     return h + m + s
-    
+
 def check_duration(duration):
     return duration <= 480 # 8 minutes
 
 async def display_error_empty_playlist(channel):
     await client.send_message(channel, ":exclamation: La playlist est vide")
-    
+
 async def display_error_not_playing(channel):
     await client.send_message(channel, ":exclamation: Pas de lecture en cours")
 
-client.run('token')
+def get_token():
+    file = open("token.txt", "r")
+    return file.read()
+
+client.run(get_token())
