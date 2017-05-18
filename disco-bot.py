@@ -88,17 +88,20 @@ async def on_message(message):
         if is_valid_yt_url(url):
 
             info = get_song_info(url)
-            #print(info)
-
-            #print(info['duration'])
-            if check_duration(info['duration']):
-                new_song = Song(**info)
-                playlist.appendleft(new_song)
-                title = new_song.title
-                hms = hms_to_string(seconds_to_hms(new_song.duration))
-                await client.send_message(message.channel, f":notes: Nouvelle entrée : {title}. :clock10: {hms}")
+            if info:
+                if info['extractor_key'] == 'Youtube':
+                    await add_song_to_playlist(info, message.channel)
+                elif info['extractor_key'] == 'YoutubePlaylist': 
+                    await client.send_message(message.channel, ':notes: Chargement de la playlist...')
+                    print(info['entries'])
+                    for song in info['entries']:
+                        url = f"https://www.youtube.com/watch?v={song['url']}"
+                        print(url)
+                        info = get_song_info(url)
+                        await add_song_to_playlist(info, message.channel)
+                    await client.send_message(message.channel, ':notes: Playlist chargée')
             else:
-                await client.send_message(message.channel, ":exclamation: La durée d'un morceau ne doit pas excéder 7 minutes")
+                await client.send_message(message.channel, ":exclamation: Cette vidéo n'extiste pas (vérifier le lien)")
         else:
             await client.send_message(message.channel, ':exclamation: Ceci n\'est pas un lien valide...')
     elif message.content.startswith('!playlist'):
@@ -265,6 +268,16 @@ async def set_volume(val, channel):
     else:
         await client.send_message(channel, ":exclamation: Le volume doit être compris entre 0 et 200." )
 
+async def add_song_to_playlist(info, channel):
+    if check_duration(info['duration']):
+        new_song = Song(**info)
+        playlist.appendleft(new_song)
+        title = new_song.title
+        hms = hms_to_string(seconds_to_hms(new_song.duration))
+        await client.send_message(channel, f":notes: Nouvelle entrée : {title}. :clock10: {hms}")
+    else:
+        await client.send_message(channel, ":exclamation: La durée d'un morceau ne doit pas excéder 7 minutes")       
+        
 def seconds_to_hms(seconds):
     """Convert given seconds into hms"""
     m, s = divmod(seconds, 60)
