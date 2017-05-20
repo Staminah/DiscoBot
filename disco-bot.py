@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 import asyncio
 import collections
 import re
@@ -18,6 +19,10 @@ except:  # Missing opus
     opus = None
 else:
     opus = True
+    
+description = '''A bot to stream music'''
+bot = commands.Bot(command_prefix='!', description=description)
+    
 
 # -----------------
 #    CONSTANTES
@@ -63,168 +68,237 @@ class Deque(collections.deque):
 # -----------------
 #     GLOBALS
 # -----------------
-playlist = Deque()
+my_playlist = Deque()
 current_song = None
 client = discord.Client()
 player = None;
 stop_demand = False
 voice = None
-volume = 1.0;
+current_volume = 1.0;
+paused = False;
+
+# -----------------
+#     ERRORS
+# -----------------
+
+error_unreadable_video = ":exclamation: Cette vidéo n'extiste pas (plus) OU a été bloquée pour des raisons de droits d'auteur"
+error_empty_playlist = ":exclamation: La playlist est vide"
+error_not_playing = ":exclamation: Aucune musique en cours."
 
 # -----------------
 #    DISCORD.PY
 # -----------------
-@client.event
+@bot.event
 async def on_ready():
     print('Logged in as')
-    print(client.user.name)
-    print(client.user.id)
+    print(bot.user.name)
+    print(bot.user.id)
     print('------')
 
-@client.event
-async def on_message(message):
-    if message.content.startswith('!add song'):
-        url = message.content.split()[2]
-        if is_valid_yt_url(url):
 
-            info = get_song_info(url)
-            if info:
-                if info['extractor_key'] == 'Youtube':
-                    await add_song_to_playlist(info, message.channel)
-                elif info['extractor_key'] == 'YoutubePlaylist': 
-                    await client.send_message(message.channel, ':notes: Chargement de la playlist...')
-                    print(info['entries'])
-                    for song in info['entries']:
-                        url = f"https://www.youtube.com/watch?v={song['url']}"
-                        print(url)
-                        info = get_song_info(url)
-                        await add_song_to_playlist(info, message.channel)
-                    await client.send_message(message.channel, ':notes: Playlist chargée')
-            else:
-                await client.send_message(message.channel, ":exclamation: Cette vidéo n'extiste pas (vérifier le lien)")
+@bot.command(pass_context=True)
+async def addsong(ctx, url : str):
+    """Add the song specified by url into the playlist"""
+    if is_valid_yt_url(url):
+        info = get_song_info(url)
+        if info:
+            if info['extractor_key'] == 'Youtube':
+                await add_song_to_playlist(info, ctx.message.channel)
+            elif info['extractor_key'] == 'YoutubePlaylist': 
+                await bot.say(':recycle:  Chargement de la playlist...')
+                print(info['entries'])
+                for song in info['entries']:
+                    url = f"https://www.youtube.com/watch?v={song['url']}"
+                    print(url)
+                    info = get_song_info(url)
+                    if info:
+                        await add_song_to_playlist(info, ctx.message.channel)
+                    else:
+                        await bot.say(error_unreadable_video)
+                await bot.say(':white_check_mark: Playlist chargée')
         else:
-            await client.send_message(message.channel, ':exclamation: Ceci n\'est pas un lien valide...')
-    elif message.content.startswith('!playlist'):
-        count = 0
-        reversed_playlist = playlist.copy()
-        reversed_playlist.reverse()
-        for song in reversed_playlist:
-            song_title = song.title
-            song_duration = song.duration
-            song_url = song.url
-            count += 1
-            hms = hms_to_string(seconds_to_hms(song.duration))
-            await client.send_message(message.channel, f"{count}. {song_title} - {hms}")
-        if count == 0:
-            await display_error_empty_playlist(message.channel)
-    elif message.content.startswith('!play'):
-        await play(message)
-    elif message.content.startswith('!peek'):
-        if playlist:
-            await peek(message.channel);
-        else:
-            await display_error_empty_playlist(message.channel)
+            await bot.say(error_unreadable_video)
+    else:
+        await bot.say(':exclamation: Ceci n\'est pas un lien valide...')
 
-    elif message.content.startswith('!song'):
-        await display_song_playing_info(message.channel)
-    elif message.content.startswith('!pause'):
-        player.pause();
-        await client.send_message(message.channel, ":pause_button: Lecture mise en pause. (Reprendre la lecture avec !resume)")
-    elif message.content.startswith('!resume'):
-        player.resume();
-        await client.send_message(message.channel, ":arrow_forward: Reprise de la lecture")
-    elif message.content.startswith('!next'):
-        if current_song:
-            player.stop(); #Stop the current song
-            await client.send_message(message.channel, ":track_next: Passage au morceau suivant")
-        else:
-            await display_error_not_playing(message.channel)
-    elif message.content.startswith('!stop'):
-        stop() #Stop the player completly
-        await client.send_message(message.channel, ":stop_button: Lecture stoppée. (Reprendre la lecture avec !play)")
-    elif message.content.startswith('!clear'):
-        playlist.clear()
-        await client.send_message(message.channel, ":grey_exclamation: La playlist a été vidée.")
-    elif message.content.startswith('!dellast'):
-        del_song = playlist.popleft()
-        song_title = del_song.title
-        await client.send_message(message.channel, f":grey_exclamation: {song_title} [Retiré de la playlist]" )
-    elif message.content.startswith('!volume'):
-        arg = message.content.split()
-        if(len(arg) > 1):
-            await set_volume(arg[1], message.channel)
-        else:
-            await display_volume(message.channel)
 
-# -----------------
-#     METHODES
-# -----------------
-def stop():
-    """Stop completly the music"""
-    global stop_demand
-    stop_demand = True
-    playlist.append(current_song) #Put back on top of the playlist the song playing when stopped
-    player.stop();
+@bot.command()
+async def playlist():
+    """Display the current content of the playlist"""      
+    count = 0
+    reversed_playlist = my_playlist.copy()
+    reversed_playlist.reverse()
+    for song in reversed_playlist:
+        song_title = song.title
+        song_duration = song.duration
+        song_url = song.url
+        count += 1
+        hms = hms_to_string(seconds_to_hms(song.duration))
+        await bot.say(f"{count}. {song_title} - {hms}")
+    if count == 0:
+        await bot.say(error_empty_playlist)
 
-async def play(message):
-    """Plays songs."""
+
+@bot.command(pass_context=True)
+async def play(ctx):
+    """Join the caller voice channel and start playing the songs in the playlist"""
     global current_song
     global player
     global stop_demand
     global voice
 
-    server = message.server
-    author = message.author
+    server = ctx.message.server
+    author = ctx.message.author
     voice_channel = author.voice_channel
-    #Envoie du bot dans le channel de author
-    tmp_voice = await _join_voice_channel(voice_channel)
-
-    #If the bot is not already in the given voice channel
-    if tmp_voice != False:
-        voice = tmp_voice
 
     if current_song is None:
-        if playlist:
-            await client.send_message(message.channel, ':arrow_forward: Début de la lecture')
-            while playlist and not stop_demand:
+        if my_playlist:
+        
+            #Envoie du bot dans le channel de author
+            tmp_voice = await _join_voice_channel(voice_channel)
+
+            #If the bot is not already in the given voice channel
+            if tmp_voice != False:
+                voice = tmp_voice
+        
+            await bot.say(':arrow_forward: Début de la lecture')
+            
+            while my_playlist and not stop_demand:
                 print("Lis un morceau")
-                current_song = playlist.pop()
+                current_song = my_playlist.pop()
 
                 beforeArgs = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
                 player = await voice.create_ytdl_player(current_song.url, ytdl_options=YT_DL_OPTIONS, before_options=beforeArgs)
-                print(volume)
-                player.volume = volume
+                player.volume = current_volume
                 player.start()
 
-                await display_song_playing_info(message.channel)
+                await display_song_playing_info(ctx.message.channel)
 
                 while not player.is_done():
                     await asyncio.sleep(1) # attend tant que la musique en cours n'est pas finie
 
             if not stop_demand:
-                await client.send_message(message.channel, ':white_check_mark: La playlist est terminée')
+                await bot.say(':white_check_mark: La playlist est terminée')
             stop_demand = False
             current_song = None
+            set_paused(False)
         else:
-            await display_error_empty_playlist(message.channel)
+            await bot.say(error_empty_playlist)
     else:
-        await client.send_message(message.channel, ':exclamation: Musique déjà en cours')
+        await bot.say(':exclamation: Musique déjà en cours')
 
-async def peek(channel):
+
+@bot.command(pass_context=True)
+async def peek(ctx):
+    """Display info about the next song in the playlist"""
+    if my_playlist:
+        await display_next_song_info(ctx.message.channel);
+    else:
+        await bot.say(error_empty_playlist)
+     
+     
+@bot.command(pass_context=True)
+async def song(ctx):
+    """Display info about the song currently playing"""
+    if not current_song is None:
+        await display_song_playing_info(ctx.message.channel)
+    else:
+        await bot.say(error_not_playing)
+    
+    
+@bot.command()
+async def pause():
+    """Enable pause mode which pauses the lecture of the current song and the playlist"""
+    if not current_song is None:
+        if not paused:
+            set_paused(True)
+            player.pause();
+            await bot.say(":pause_button: Lecture mise en pause. (Reprendre la lecture avec !resume)")
+        else:
+            await bot.say(":exclamation: Lecture deja en pause.")
+    else:
+        await bot.say(error_not_playing)
+        
+@bot.command()
+async def resume():
+    """Disable pause mode which continue the reading of the current song and the playlist"""
+    if not current_song is None:
+        if paused:
+            set_paused(False)
+            player.resume();
+            await bot.say(":arrow_forward: Reprise de la lecture") 
+        else:
+            await bot.say(":exclamation: La lecture est deja en cours.")
+    else:
+        await bot.say(error_not_playing)
+  
+@bot.command()
+async def next():
+    """Stop the current song and play the next one in the playlist"""
+    if not current_song is None:
+        player.stop(); #Stop the current song
+        await bot.say(":track_next: Passage au morceau suivant")
+    else:
+        await bot.say(error_not_playing)
+    
+  
+@bot.command()
+async def stop():
+    """Stop completly the reading of the current song and the playlist"""
+    #Stop the player completly
+    global stop_demand
+    if not current_song is None:
+        stop_demand = True
+        my_playlist.append(current_song) #Put back on top of the playlist the song playing when stopped
+        player.stop();
+        await bot.say(":stop_button: Lecture stoppée. (Reprendre la lecture avec !play)")
+    else:
+        await bot.say(error_not_playing)
+ 
+ 
+@bot.command()
+async def clear():
+    """Clear the playlist"""
+    my_playlist.clear()
+    await bot.say(":grey_exclamation: La playlist a été vidée.")
+
+    
+@bot.command()
+async def dellast():
+    """Remove the last song added to the playlist from it"""
+    del_song = my_playlist.popleft()
+    song_title = del_song.title
+    await bot.say(f":grey_exclamation: {song_title} [Retiré de la playlist]" )
+
+  
+@bot.command(pass_context=True)
+async def volume(ctx):
+    """Remove the last song added to the playlist from it"""  
+    arg = ctx.message.content.split()
+    if(len(arg) > 1):
+        await set_volume(arg[1], ctx.message.channel)
+    else:
+        await display_volume(ctx.message.channel)
+
+# -----------------
+#     METHODES
+# -----------------
+
+async def display_next_song_info(channel):
     """Display information of the next song to come"""
-    peeked_song = playlist.peek()
+    peeked_song = my_playlist.peek()
     if peeked_song:
         song_title = peeked_song.title
-        await client.send_message(channel, f":track_next: Prochain morceau : {song_title}")
+        await bot.send_message(channel, f":track_next: Prochain morceau : {song_title}")
     else:
-        await client.send_message(channel, ":track_next: Prochain morceau : Y'a plus rien après wesh")
+        await bot.send_message(channel, ":track_next: Prochain morceau : Y'a plus rien après wesh")
 
 async def display_song_playing_info(channel):
     """Display info from the song playing currently and the next song to come"""
     song_title = current_song.title
     hms = hms_to_string(seconds_to_hms(current_song.duration))
-    await client.send_message(channel, f":musical_note: Ecoute : {song_title} - {hms}")
-    await peek(channel);
+    await bot.send_message(channel, f":musical_note: Ecoute : {song_title} - {hms}")
+    await display_next_song_info(channel);
 
 def get_song_info(url):
     """Returns Song object with details from url video."""
@@ -241,42 +315,44 @@ async def _join_voice_channel(channel):
     """The Bot join the given audio channel"""
     #Pour l'instant on admet un usage sur un seul voice channel à la fois
 
-    for voice in client.voice_clients:
+    for voice in bot.voice_clients:
         if voice.channel.id == channel.id:
             print("Already in that voice channel")
             return False
 
-    voice = await client.join_voice_channel(channel)
+    voice = await bot.join_voice_channel(channel)
     print("Connection to a voice channel")
     return voice
 
 async def display_volume(channel):
-    await client.send_message(channel, f"Volume à {volume * 100:.0f}%" )
+    """Display the current player volume"""
+    await bot.send_message(channel, f":speaker: Volume à {current_volume * 100:.0f}%" )
 
 async def set_volume(val, channel):
     """Set the new volume to val"""
-    global volume
+    global current_volume
     try:
         val = int(val)
     except ValueError:
         print("That's not an int!")
     if 0 <= val <=200:
-        volume = val/100.
+        current_volume = val/100.
         if player:
-            player.volume = volume
+            player.volume = current_volume
         await display_volume(channel)
     else:
-        await client.send_message(channel, ":exclamation: Le volume doit être compris entre 0 et 200." )
+        await bot.send_message(channel, ":exclamation: Le volume doit être compris entre 0 et 200." )
 
 async def add_song_to_playlist(info, channel):
+    """Add a song into the playlist"""
     if check_duration(info['duration']):
         new_song = Song(**info)
-        playlist.appendleft(new_song)
+        my_playlist.appendleft(new_song)
         title = new_song.title
         hms = hms_to_string(seconds_to_hms(new_song.duration))
-        await client.send_message(channel, f":notes: Nouvelle entrée : {title}. :clock10: {hms}")
+        await bot.send_message(channel, f":notes: Nouvelle entrée : {title}. :clock10: {hms}")
     else:
-        await client.send_message(channel, ":exclamation: La durée d'un morceau ne doit pas excéder 7 minutes")       
+        await bot.send_message(channel, ":exclamation: La durée d'un morceau ne doit pas excéder 7 minutes")       
         
 def seconds_to_hms(seconds):
     """Convert given seconds into hms"""
@@ -299,16 +375,18 @@ def hms_to_string(hms):
     return h + m + s
 
 def check_duration(duration):
-    return duration <= 480 # 8 minutes
+    """Check the duration given in arg"""
+    return duration <= 600 # 10 minutes
 
-async def display_error_empty_playlist(channel):
-    await client.send_message(channel, ":exclamation: La playlist est vide")
-
-async def display_error_not_playing(channel):
-    await client.send_message(channel, ":exclamation: Pas de lecture en cours")
 
 def get_token():
+    """Get the bot token form text file"""
     file = open("token.txt", "r")
     return file.read()
+    
+def set_paused(bool):
+    """Set the state of the pause"""
+    global paused
+    paused = bool
 
-client.run(get_token())
+bot.run(get_token())
