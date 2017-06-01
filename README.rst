@@ -30,14 +30,10 @@ Installing
 2. Create a simpel text file next to **disco-bot.py** (at the root of
    your installation folder) and insert your bot token in the first row.
 
-::
-
-    client.run('your_token_here')
-
 Running
 -------
 
-1. Run disco-bot.py
+Run disco-bot.py
 
 ::
 
