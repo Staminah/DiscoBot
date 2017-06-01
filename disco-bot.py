@@ -279,6 +279,28 @@ async def volume(ctx):
         await set_volume(arg[1], ctx.message.channel)
     else:
         await display_volume(ctx.message.channel)
+        
+@bot.command()
+async def helpbot():
+    """Display help for the bot's commands""" 
+    help = '-  **!help** : Display help about the bot’s commands\n'\
+    '-  **!addsong [YT URL]** : Add a song or songs from a playlist to the'\
+    'bot’s queue. Only argument is YouTube URL of your song/playlist.\n'\
+    '-  **!playlist** : Display the current playlist of the bot.\n'\
+    '-  **!play** : Start reading the songs in the playlist (you must be in a'\
+    'voice channel!)\n'\
+    '-  **!peek** : Display information about the next song.\n'\
+    '-  **!song** : Display information about the current song.\n'\
+    '-  **!next** : Skip the current song and start reading the next one.\n'\
+    '-  **!pause** : Pause the reading.\n'\
+    '-  **!resume** : Resume the reading.\n'\
+    '-  **!stop** : Stop completly the lecture.\n'\
+    '-  **!clear** : Empty the playlist.\n'\
+    '-  **!dellast** : Delete the last song added to the playlist.\n'\
+    '-  **!volume [number]** : When called without arguments only display the'\
+    'current volume, when you specify a number (between 0 - 200) adjust'\
+    'the current volume.\n'
+    await bot.say(help)
 
 # -----------------
 #     METHODES
