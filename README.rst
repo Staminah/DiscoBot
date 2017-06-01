@@ -20,15 +20,16 @@ FFMPEG
 ^^^^^^
 
 1. Download this folder : `ffmpeg v3.3.1 win64`_
-2. Find **ffmpeg.exe** inside the downloaded folder
+2. Find **ffmpeg.exe** inside the downloaded folder (into bin folder).
 3. Put the exe where you want and **add it to your PATH**.
 
 Installing
 ~~~~~~~~~~
 
 1. Do what is listed above.
-2. Create a simpel text file next to **disco-bot.py** (at the root of
-   your installation folder) and insert your bot token in the first row.
+2. Create a simple text file next to **disco-bot.py** (at the root of
+   your installation folder) and **insert your bot token** in the first
+   row.
 
 Running
 -------
