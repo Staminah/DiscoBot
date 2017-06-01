@@ -20,8 +20,8 @@ FFMPEG
 ^^^^^^
 
 1. Download this folder : `ffmpeg v3.3.1 win64`_
-2. Find ffmpeg.exe inside the downloaded folder
-3. Put the exe where you want and add it to your PATH.
+2. Find **ffmpeg.exe** inside the downloaded folder
+3. Put the exe where you want and **add it to your PATH**.
 
 Installing
 ~~~~~~~~~~
