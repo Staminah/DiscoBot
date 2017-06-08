@@ -5,6 +5,12 @@ import collections
 import re
 import copy
 
+# --
+# Some parts of this bot come from https://github.com/Twentysix26/Red-DiscordBot
+# His bot helped us to understand some mechanics. 
+# Many thanks to him.
+# --
+
 try:
     import youtube_dl
 except:
