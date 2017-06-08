@@ -78,7 +78,7 @@ Bibliography
 -  `Youtube-DL`_
 -  `Discord API Reference`_
 -  `FFMPEG files`_
--  `RedBot`_
+-  `Red-DiscordBot`_
 
 .. _ffmpeg v3.3.1 win64: http://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-3.3.1-win64-static.zip
 .. _Staminah: https://github.com/Staminah
@@ -87,4 +87,4 @@ Bibliography
 .. _Youtube-DL: https://github.com/rg3/youtube-dl
 .. _Discord API Reference: http://discordpy.readthedocs.io/en/latest/api.html
 .. _FFMPEG files: https://ffmpeg.zeranoe.com/builds/
-.. _RedBot: https://github.com/Twentysix26/Red-DiscordBot
+.. _Red-DiscordBot: https://github.com/Twentysix26/Red-DiscordBot
