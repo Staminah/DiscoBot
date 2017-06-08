@@ -47,9 +47,9 @@ Once your bot is online on your server you can use a list of commands
 that start with **!**. Some of them require you to be in a voice channel
 in order to work (like !play).
 
--  **!helpbot** : Display help about the bot’s commands
+-  **!helpbot** : Display help about the botâ€™s commands
 -  **!addsong [YT URL]** : Add a song or songs from a playlist to the
-   bot’s queue. Only argument is YouTube URL of your song/playlist.
+   botâ€™s queue. Only argument is YouTube URL of your song/playlist.
 -  **!playlist** : Display the current playlist of the bot.
 -  **!play** : Start reading the songs in the playlist (you must be in a
    voice channel!)
@@ -78,6 +78,7 @@ Bibliography
 -  `Youtube-DL`_
 -  `Discord API Reference`_
 -  `FFMPEG files`_
+-  `RedBot`_
 
 .. _ffmpeg v3.3.1 win64: http://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-3.3.1-win64-static.zip
 .. _Staminah: https://github.com/Staminah
@@ -86,3 +87,4 @@ Bibliography
 .. _Youtube-DL: https://github.com/rg3/youtube-dl
 .. _Discord API Reference: http://discordpy.readthedocs.io/en/latest/api.html
 .. _FFMPEG files: https://ffmpeg.zeranoe.com/builds/
+.. _RedBot: https://github.com/Twentysix26/Red-DiscordBot
